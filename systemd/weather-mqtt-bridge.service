@@ -1,0 +1,18 @@
+[Unit]
+Description=Weather MQTT Bridge (Open-Meteo → MQTT)
+After=network-online.target mosquitto.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=loxberry
+Group=loxberry
+WorkingDirectory=/opt/weather-mqtt-bridge
+ExecStart=/usr/bin/python3 /opt/weather-mqtt-bridge/weather_mqtt_bridge.py --config /opt/weather-mqtt-bridge/config.yaml
+Restart=on-failure
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

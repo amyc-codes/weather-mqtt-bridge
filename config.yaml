@@ -1,0 +1,56 @@
+mqtt:
+  broker: localhost
+  port: 1883
+  username: null
+  password: null
+  client_id: weather-mqtt-bridge
+  base_topic: weather
+  retain: true
+  qos: 1
+
+spots:
+  - slug: salzburg
+    name: Salzburg
+    lat: 47.80
+    lon: 13.04
+  - slug: wallersee
+    name: Wallersee
+    lat: 47.91
+    lon: 13.15
+
+models:
+  - ecmwf_ifs04
+  - gfs_seamless
+  - icon_seamless
+
+hourly_parameters:
+  - wind_speed_10m
+  - wind_direction_10m
+  - wind_gusts_10m
+  - temperature_2m
+  - apparent_temperature
+  - precipitation
+  - precipitation_probability
+  - pressure_msl
+  - cloud_cover
+  - relative_humidity_2m
+
+preferred_model: ecmwf_ifs04
+fetch_interval_minutes: 15
+
+# Unit conversions: publish additional topics with converted values
+conversions:
+  wind_speed_10m:
+    - unit: ms
+      factor: 0.27778  # km/h → m/s
+    - unit: kn
+      factor: 0.53996  # km/h → knots
+  wind_gusts_10m:
+    - unit: ms
+      factor: 0.27778
+    - unit: kn
+      factor: 0.53996
+
+logging:
+  level: INFO
+  file: null  # set path for file logging
