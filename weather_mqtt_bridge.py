@@ -97,7 +97,12 @@ def find_current_index(times: List[str]) -> int:
     best_idx = 0
     best_delta = float("inf")
     for i, t in enumerate(times):
-        dt = datetime.fromisoformat(t.replace("Z", "+00:00"))
+        # Open-Meteo returns UTC times without offset — treat as UTC
+        raw = t.replace("Z", "")
+        if "+" not in raw and raw == t:
+            dt = datetime.fromisoformat(raw).replace(tzinfo=timezone.utc)
+        else:
+            dt = datetime.fromisoformat(t.replace("Z", "+00:00"))
         delta = abs((now - dt).total_seconds())
         if delta < best_delta:
             best_delta = delta
@@ -222,6 +227,7 @@ def process_spot(
 
     # Determine which keys belong to which model
     model_data: Dict[str, Dict[str, Any]] = {}
+    model_current_time: Dict[str, str] = {}
     for model in models:
         model_data[model] = {}
         for param in params:
@@ -235,8 +241,21 @@ def process_spot(
             else:
                 continue
 
-            if current_idx < len(values) and values[current_idx] is not None:
-                model_data[model][param] = values[current_idx]
+            # Find nearest index with actual data (some models have sparse grids)
+            best_val_idx = current_idx
+            if best_val_idx < len(values) and values[best_val_idx] is None:
+                # Search nearby indices for the closest non-None value
+                for offset in range(1, min(12, len(values))):
+                    for candidate in [current_idx - offset, current_idx + offset]:
+                        if 0 <= candidate < len(values) and values[candidate] is not None:
+                            best_val_idx = candidate
+                            break
+                    if values[best_val_idx] is not None:
+                        break
+
+            if best_val_idx < len(values) and values[best_val_idx] is not None:
+                model_data[model][param] = values[best_val_idx]
+                model_current_time[model] = times[best_val_idx]
 
             # Publish full forecast series
             forecast_series = [
@@ -248,6 +267,7 @@ def process_spot(
 
     # Publish current values per model
     for model, current in model_data.items():
+        m_time = model_current_time.get(model, current_time)
         for param, value in current.items():
             publisher.publish([slug, model, param], round(value, 2))
 
@@ -257,19 +277,20 @@ def process_spot(
 
         # Full current JSON for this model
         publisher.publish_json([slug, model, "current"], {
-            "time": current_time,
+            "time": m_time,
             **current,
         })
 
     # Publish preferred model as "best"
     if preferred in model_data:
         best = model_data[preferred]
+        best_time = model_current_time.get(preferred, current_time)
         for param, value in best.items():
             publisher.publish([slug, "best", param], round(value, 2))
             for unit, conv_val in apply_conversions(param, value, conversions):
                 publisher.publish([slug, "best", f"{param}_{unit}"], conv_val)
         publisher.publish_json([slug, "best", "current"], {
-            "time": current_time,
+            "time": best_time,
             "model": preferred,
             **best,
         })

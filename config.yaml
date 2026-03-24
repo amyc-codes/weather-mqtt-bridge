@@ -19,7 +19,7 @@ spots:
     lon: 13.15
 
 models:
-  - ecmwf_ifs04
+  - ecmwf_ifs025
   - gfs_seamless
   - icon_seamless
 
@@ -35,7 +35,7 @@ hourly_parameters:
   - cloud_cover
   - relative_humidity_2m
 
-preferred_model: ecmwf_ifs04
+preferred_model: ecmwf_ifs025
 fetch_interval_minutes: 15
 
 # Unit conversions: publish additional topics with converted values
